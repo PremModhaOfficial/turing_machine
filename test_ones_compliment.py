@@ -6,12 +6,12 @@ import main
 ones_compliment_config = {
     "name": "1's compliment",
     "InitialState": "q0",
-    "BlankSymbol": "B",
+    "BlankSymbol": "*",
     "FinalStates": ["q2"],
     "TransitionTable": {
-        "q0": {"0": "q0 1 R", "1": "q0 0 R", "B": "q1 B L"},
-        "q1": {"0": "q1 0 L", "1": "q1 1 L", "B": "q2 B R"},
-        "q2": {"0": [], "1": [], "B": []},
+        "q0": {"0": "q0 1 R", "1": "q0 0 R", "*": "q1 * L"},
+        "q1": {"0": "q1 0 L", "1": "q1 1 L", "*": "q2 * R"},
+        "q2": {"0": [], "1": [], "*": []},
     },
 }
 
@@ -20,7 +20,7 @@ def genrateRandomPairs(many: int, length: int = 10) -> dict[str, str]:
     bank: dict[str, str] = {}
     for _ in range(many):
         tape = "".join(random.choices(["0", "1"], k=length))
-        bank[tape] = "B" + "".join(["1" if x == "0" else "0" for x in tape]) + "B"
+        bank[tape] = "".join(["1" if x == "0" else "0" for x in tape])
     return bank
 
 
@@ -28,7 +28,8 @@ class TestTuringMachine(unittest.TestCase):
     def test_setTape(self):
         t = main.TuringMachine(ones_compliment_config)
         t.setTape("1")
-        self.assertEqual(t.tape, ["B", "1", "B"])
+        self.assertEqual(t.tape, ["*", "1", "*"])
+        self.assertEqual(t.trim_tape(), "1")
         del t
 
     # def test_get_from_user(self):
@@ -44,7 +45,7 @@ class TestTuringMachine(unittest.TestCase):
     def test_run(self):
         t = main.TuringMachine(ones_compliment_config)
         t.setTape("101101100")
-        self.assertEqual(t.run(), (main.TuringResult.ACCEPTED, "B010010011B"))
+        self.assertEqual(t.run(trim=True), (main.TuringResult.ACCEPTED, "010010011"))
         del t
 
     def test_stressed(self):
@@ -55,6 +56,6 @@ class TestTuringMachine(unittest.TestCase):
             t.setTape(k)
             # print(f"Testing {count} : \n {k} \n{v}")
             # count += 1
-            self.assertEqual(t.run(), (main.TuringResult.ACCEPTED, v))
+            self.assertEqual(t.run(trim=True), (main.TuringResult.ACCEPTED, v))
             # print(f"\n[----------\npassed \n {k}\n{v}\n----------]")
             del t

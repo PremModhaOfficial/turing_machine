@@ -24,8 +24,8 @@ m = {
     "BlankSymbol": "B",
     "FinalStates": ["q2"],
     "TransitionTable": {
-        "q0": {"0": ["q0 1 R"], "1": ["q0 0 R"], "B": ["q1 B L"]},
-        "q1": {"0": ["q1 0 L"], "1": ["q1 1 L"], "B": ["q2 B R"]},
+        "q0": {"0": "q0 1 R", "1": "q0 0 R", "B": "q1 B L"},
+        "q1": {"0": "q1 0 L", "1": "q1 1 L", "B": "q2 B R"},
         "q2": {"0": [], "1": [], "B": []},
     },
 }
@@ -71,8 +71,26 @@ class TuringMachine:
     def ttMaker(self):
 
         trant = str.maketrans(" ", ",")
-        vars = eval("[ " + input("states saperate by ` `").translate(trant) + " ]")
-        print(vars)
+        states = eval("[ " + input("states saperate by ` `").translate(trant) + " ]")
+        vars: list = eval("[ " + input("vars saperate by ` `").translate(trant) + " ]")
+        tt = dict().fromkeys(states)
+        for k in tt.keys():
+            tt[k] = dict().fromkeys(vars)
+            for var in vars:
+                print(f" STATE `{k} and VARIABLE {var}`")
+                inp = input("state replace direction\n").strip()
+                if len(inp.split(" ")) == 3:
+                    tt[k][str(var)] = inp
+                if len(inp) == 3:
+                    tt[k][str(var)] = f"{inp[0]} {inp[1]} {inp[2].upper()}"
+                if inp.upper() == "RL":
+                    tt[k][str(var)] = f"{k} {var} L"
+                if inp.upper() == "RR":
+                    tt[k][str(var)] = f"{k} {var} R"
+                if inp == "x" or inp == None:
+                    del tt[k][str(var)]
+        print(tt)
+        return tt
 
     def setTape(self, maybeREL: str) -> None:
         Blank = self.config["BlankSymbol"]
@@ -83,14 +101,15 @@ class TuringMachine:
 
     def increasePointer(self) -> None:
         self.pointer += 1
-        if self.pointer >= len(self.tape):
+        if self.pointer >= len(self.tape) - 1:
             self.tape.append(self.blank)
 
     def decreasePointer(self) -> None:
         self.pointer -= 1
         if self.pointer < 0:
             self.tape.insert(0, self.blank)
-            self.pointer = 0
+            self.tape.insert(0, self.blank)
+            self.pointer = 1
 
     def compile_transition(self) -> None:
         log = str(f"{self.pointer:>4}: |- ({self.currentState}, {"".join(self.tape)})")
@@ -107,10 +126,8 @@ class TuringMachine:
         for i in self.verboseStates:
             print(i)
 
-    def run(self, withLogs=False) -> WholeResult:
+    def run(self, withLogs=False, trim=False) -> WholeResult:
         self.withLogs = withLogs
-        if withLogs:
-            print("pre while")
         while isinstance(self.currentState, str):
             self.compile_transition()
             try:
@@ -119,16 +136,21 @@ class TuringMachine:
                 ]
             except KeyError:
                 self.printTransitions()
+                print(KeyError, self.currentState, self.tape[self.pointer])
                 return TuringResult.REJECTED, "".join(self.tape)
 
             [self.currentState, write, direction] = NextState.split(" ")
-            # print(self.currentSate in self.config["FinalStates"])
+            print(NextState)
             if not self.currentState or self.currentState == "":
+                print(f"Empty SET")
                 self.printTransitions()
                 return TuringResult.REJECTED, "".join(self.tape)
             if self.currentState in self.config["FinalStates"]:
                 self.printTransitions()
-                return TuringResult.ACCEPTED, "".join(self.tape)
+                if trim:
+                    return TuringResult.ACCEPTED, self.trim_tape()
+                else:
+                    return TuringResult.ACCEPTED, "".join(self.tape)
             self.tape[self.pointer] = write
 
             if direction == "R":
@@ -137,7 +159,10 @@ class TuringMachine:
                 self.decreasePointer()
             elif direction == "S":
                 self.printTransitions()
-                return TuringResult.ACCEPTED, "".join(self.tape)
+                if trim:
+                    return TuringResult.ACCEPTED, self.trim_tape()
+                else:
+                    return TuringResult.ACCEPTED, "".join(self.tape)
             else:
                 self.printTransitions()
                 return ValueError(f"Invalid Direction `{direction}`: {self.__repr__()}")
